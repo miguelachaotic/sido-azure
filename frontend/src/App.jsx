@@ -4,6 +4,7 @@ import JobsList from './components/JobsList.jsx';
 import PipelineVisualizer from './components/PipelineVisualizer.jsx';
 import DetailsDrawer from './components/DetailsDrawer.jsx';
 import './styles.css';
+import { getStatus } from './services/api';
 
 export default function App() {
   const [jobs, setJobs] = useState(() => {
@@ -18,14 +19,14 @@ export default function App() {
   function addJob(job) {
     setJobs(prev => [job, ...prev].slice(0, 20));
     setSelectedJob(job.id);
+    // immediately try to refresh job from backend
+    setTimeout(() => { refreshJob(job.id); }, 300);
   }
 
   async function refreshJob(jobId) {
     try {
-      const r = await fetch(`/api/images/status/${jobId}`);
-      if (!r.ok) return null;
-      const json = await r.json();
-      // update jobs list
+      const json = await getStatus(jobId);
+      if (!json) return null;
       setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: json.status, result: json.result } : j));
       return json;
     } catch (e) { console.error(e); return null }
@@ -42,15 +43,17 @@ export default function App() {
           <UploadCard onJobCreated={addJob} />
           <JobsList jobs={jobs} onSelect={setSelectedJob} onRefresh={refreshJob} />
         </aside>
-        <section className="right-col">
-          {selectedJob ? (
-            <PipelineVisualizer job={jobs.find(j => j.id === selectedJob)} onRefresh={() => refreshJob(selectedJob)} />
-          ) : (
-            <div className="empty-view">Selecciona o crea un trabajo para ver el pipeline y los resultados.</div>
-          )}
-        </section>
+        <div style={{display: 'flex', flex: 'column'}}>
+          <section className="right-col">
+            {selectedJob ? (
+              <PipelineVisualizer job={jobs.find(j => j.id === selectedJob)} onRefresh={refreshJob} />
+            ) : (
+              <div className="empty-view">Selecciona o crea un trabajo para ver el pipeline y los resultados.</div>
+            )}
+            <DetailsDrawer job={jobs.find(j => j.id === selectedJob)} onClose={() => setSelectedJob(null)} />
+          </section>
+        </div>
       </main>
-      <DetailsDrawer job={jobs.find(j => j.id === selectedJob)} onClose={() => setSelectedJob(null)} />
     </div>
   );
 }

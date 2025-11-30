@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { uploadFileToBlob, generateBlobSasUrl, analyzeDocumentFromUrl, translateText, analyzeText } = require('../azureClients');
+const { uploadFileToBlob, generateBlobSasUrl, analyzeDocumentFromUrl, translateText, analyzeText, detectLanguage, classifyText } = require('../azureClients');
 
 // Simple pipeline that uses Azure SDKs/helpers when configured.
 async function processImage(filePath, id) {
@@ -12,12 +12,13 @@ async function processImage(filePath, id) {
   const container = process.env.AZURE_STORAGE_CONTAINER || 'images';
   const blobName = `${id}${path.extname(filename)}`;
   let blobUrl = null;
+  let sasUrl = null
   try {
     const uploadedUrl = await uploadFileToBlob(container, blobName, filePath);
     steps.push({ step: 'upload', status: 'done', info: { uploadedUrl } });
     // Generate SAS for read by Cognitive Services
     try {
-      const sasUrl = generateBlobSasUrl(container, blobName, 3600);
+      sasUrl = generateBlobSasUrl(container, blobName, 3600);
       blobUrl = sasUrl;
       steps.push({ step: 'generateSAS', status: 'done', info: { sasUrl } });
     } catch (e) {
@@ -33,10 +34,10 @@ async function processImage(filePath, id) {
   let extractedText = '';
   try {
     if (process.env.COG_KEY && process.env.COG_ENDPOINT) {
-      const docResult = await analyzeDocumentFromUrl(blobUrl);
+      const result = await analyzeDocumentFromUrl(blobUrl);
       // docResult.content contains the full extracted text for prebuilt-read
-      extractedText = docResult && docResult.content ? docResult.content : '';
-      steps.push({ step: 'ocr', status: 'done', info: { note: 'Called Azure Form Recognizer', pages: docResult && docResult.pages ? docResult.pages.length : 0 } });
+      extractedText = result;
+      steps.push({ step: 'ocr', status: 'done', info: { note: 'Called Azure Form Recognizer', chars: result.length } });
     } else {
       extractedText = 'Texto de ejemplo extraído de la imagen.';
       steps.push({ step: 'ocr', status: 'done', info: { note: 'Fake OCR used (no COG_KEY configured)' } });
@@ -46,11 +47,10 @@ async function processImage(filePath, id) {
     throw err;
   }
 
-  // Step 3: Detect language (basic heuristic)
-  let detectedLanguage = 'unknown';
-  if (/\b(el|la|de|que|y)\b/i.test(extractedText)) detectedLanguage = 'es';
-  else if (/\b(the|and|of|is)\b/i.test(extractedText)) detectedLanguage = 'en';
-  steps.push({ step: 'languageDetection', status: 'done', info: { language: detectedLanguage } });
+
+  // Step 3: Averiguar el lenguaje detectado
+  let detectedLanguage = undefined;
+  detectedLanguage = (await detectLanguage(extractedText)).primaryLanguage.iso6391Name;
 
   // Step 4: Translate to Spanish (if needed)
   let translated = extractedText;
@@ -62,6 +62,7 @@ async function processImage(filePath, id) {
       steps.push({ step: 'translate', status: 'done', info: { note: 'No translation required or translator not configured' } });
     }
   } catch (err) {
+    
     steps.push({ step: 'translate', status: 'error', info: { error: err.message } });
   }
 
@@ -84,8 +85,18 @@ async function processImage(filePath, id) {
   }
 
   // Step 6: Simple classification (rules)
-  const classification = classifyByKeywords(keyPhrases);
-  steps.push({ step: 'classification', status: 'done', info: { classification } });
+  let classification = 'General';
+  try {
+    // prefer classifying using configured Azure service
+    const fullText = translated || extractedText || '';
+    const cls = await classifyText(fullText, ['Email','Scientific','Report','Invoice','General']);
+    classification = (cls && (cls.label || cls.raw && cls.raw.label)) || classifyByKeywords(keyPhrases);
+    steps.push({ step: 'classification', status: 'done', info: { classification, confidence: cls && cls.confidence, raw: cls && cls.raw } });
+  } catch (err) {
+    // fallback to regex classifier
+    classification = classifyByKeywords(keyPhrases);
+    steps.push({ step: 'classification', status: 'warning', info: { note: 'Classification Service made by RegEx', error: err.message, classification } });
+  }
 
   const result = {
     id,
@@ -96,13 +107,9 @@ async function processImage(filePath, id) {
     keyPhrases,
     sentiment,
     classification,
-    steps
+    steps,
+    sasUrl,
   };
-
-  // Persist to disk
-  const dataDir = path.join(__dirname, '..', '..', 'data');
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(path.join(dataDir, `${id}.json`), JSON.stringify(result, null, 2));
 
   return result;
 }

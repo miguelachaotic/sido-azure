@@ -1,0 +1,27 @@
+.app-root{font-family:Inter,Segoe UI,Helvetica,Arial;margin:0;padding:0;color:#222}
+.app-header{background:#0b5cff;color:#fff;padding:16px; border-radius: 10px;}
+.app-header h1{margin:0;font-size:20px}
+.app-main{display:flex;gap:16px;padding:16px}
+.left-col{width:320px}
+.right-col{flex:1; width: 100%;}
+.card{background:#fff;border-radius:8px;padding:12px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.muted{color:#666;font-size:13px}
+.upload-form input[type=file]{width:100%;margin-bottom:8px}
+.upload-actions{display:flex;justify-content:flex-end}
+.upload-actions button{background:#0b5cff;color:#fff;border:none;padding:8px 12px;border-radius:4px}
+.jobs-list ul{list-style:none;margin:0;padding:0}
+.job-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0}
+.job-meta{cursor:pointer}
+.job-meta .job-id{color:#0b5cff}
+.job-actions button{margin-left:8px}
+.pipeline-visualizer .steps{display:flex;gap:8px;margin:12px 0}
+.step{flex:1;padding:8px;border-radius:6px;border:1px solid #eee;text-align:center}
+.step.pending{background:#fff}
+.step.done{background:#e6ffed;border-color:#b7f5c7}
+.step.error{background:#ffecec;border-color:#ffb3b3}
+.translated-box{background:#f9f9f9;border-left:3px solid #0b5cff;padding:8px;margin-top:6px}
+.details-drawer{position:relative;right:12px;top:1px;width:1700px;max-height:80vh;overflow:auto;z-index:60}
+.drawer-inner{background:#fff;padding:12px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12)}
+.drawer-header{display:flex;justify-content:space-between;align-items:center}
+.raw-json{background:#0f1724;color:#dbeafe;padding:8px;border-radius:6px;overflow:auto}
+.empty-view{color:#888;padding:24px;text-align:center}

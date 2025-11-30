@@ -47,4 +47,30 @@ router.get('/status/:id', (req, res) => {
   res.json(results.get(id));
 });
 
+// Simple proxy to fetch blobs server-side to avoid CORS issues for the frontend.
+// Usage: GET /api/images/fetch?url=<sas-url>
+router.get('/fetch', async (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).json({ error: 'url query parameter required' });
+  try {
+    const parsed = new URL(url);
+    // Basic host validation: only allow Azure blob hosts or same storage account
+    const allowedHost = parsed.hostname.includes('.blob.core.windows.net') || (process.env.AZURE_STORAGE_ACCOUNT && parsed.hostname.includes(process.env.AZURE_STORAGE_ACCOUNT));
+    if (!allowedHost) return res.status(400).json({ error: 'Invalid host' });
+
+    const https = require('https');
+    https.get(url, (fetchRes) => {
+      // forward content-type and content-length but NOT content-disposition (avoid forcing download)
+      if (fetchRes.headers['content-type']) res.setHeader('Content-Type', fetchRes.headers['content-type']);
+      if (fetchRes.headers['content-length']) res.setHeader('Content-Length', fetchRes.headers['content-length']);
+      fetchRes.pipe(res);
+    }).on('error', (err) => {
+      console.error('Proxy fetch error', err);
+      res.status(502).json({ error: 'Failed to fetch remote resource' });
+    });
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
+});
+
 module.exports = router;
