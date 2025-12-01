@@ -25,7 +25,6 @@ jobs:
 
       - name: npm install, build, and test
         run: |
-          cd frontend
           npm install
           npm run build --if-present
           npm run test --if-present
@@ -52,9 +51,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_BAFE370345734B4BB2661422C6D76208 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3987FC8974204AC9A9575FDACBD873D3 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_E7702EED4A78475F925A5224BEEE8ED9 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_9EEC1F0B893740E385ABF940D53BE4C2 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_D6220554181747BEB3BECBEDBABA0CEC }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_C1DC9C554D454613A3FDBE97F6079A59 }}
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
@@ -62,10 +61,5 @@ jobs:
         with:
           app-name: 'SIDOWebApp'
           slot-name: 'Production'
-          package: ./frontend/dist
-
+          package: .
           
-
-
-
-
