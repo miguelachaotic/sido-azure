@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Resultados OCR y Análisis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <div id="loading-overlay">
+      <div class="loading-inner">
+        <div class="spinner" aria-hidden="true"></div>
+        <div class="loading-text">Procesando, por favor espere…</div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="card">
+        <h1>Resultados del pipeline</h1>
+
+        <div class="section">
+          <h2>Archivo</h2>
+          <p><a href="{{ blob_url }}" target="_blank">Abrir archivo subido</a></p>
+        </div>
+
+        <div class="section">
+          <h2>Texto extraído</h2>
+          <pre>{{ extracted_text }}</pre>
+        </div>
+
+        <div class="section">
+          <h2>Idioma detectado</h2>
+          <p class="muted">{{ detected_lang }}</p>
+        </div>
+
+        <div class="section">
+          <h2>Texto traducido (español)</h2>
+          <pre>{{ translated_text }}</pre>
+        </div>
+
+        <div class="section">
+          <h2>Clasificación / Key Phrases</h2>
+          {% if key_phrases and key_phrases.documents %}
+            <ul class="kp-list">
+              {% for kp in key_phrases.documents[0].keyPhrases %}
+                <li>{{ kp }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="muted">No hay frases clave.</p>
+          {% endif %}
+        </div>
+
+        <div class="section">
+          <h2>Análisis de sentimiento</h2>
+          {% if sentiment and sentiment.documents %}
+            <div class="sentiment-box">
+              <p><strong>Sentimiento:</strong> {{ sentiment.documents[0].sentiment }}</p>
+              <p class="small muted">Scores: {{ sentiment.documents[0].confidenceScores }}</p>
+            </div>
+          {% else %}
+            <p class="muted">No hay resultado de sentimiento.</p>
+          {% endif %}
+        </div>
+
+        <p style="margin-top:18px;"><a href="/">Volver</a></p>
+      </div>
+    </div>
+
+    <script>
+      // Ensure overlay is hidden when results are rendered
+      document.addEventListener('DOMContentLoaded', function(){
+        const overlay = document.getElementById('loading-overlay');
+        if(overlay) overlay.classList.remove('show');
+      });
+    </script>
+  </body>
+</html>

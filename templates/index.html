@@ -1,0 +1,126 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Subir imagen para OCR</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body>
+    <div id="loading-overlay">
+      <div class="loading-inner">
+        <div class="spinner" aria-hidden="true"></div>
+        <div class="loading-text">Procesando, por favor espere…</div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="card">
+        <h1>Enviar fichero</h1>
+        <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+          <label for="file">Selecciona un fichero (imagen/pdf):</label>
+          <input type="file" name="file" id="file" required>
+          <div class="meta small muted">Tamaño máximo según configuración del servidor</div>
+          <button id="upload-button" type="submit">Enviar</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      (function(){
+        const form = document.getElementById('upload-form');
+        const overlay = document.getElementById('loading-overlay');
+        const btn = document.getElementById('upload-button');
+        const loadingText = overlay && overlay.querySelector('.loading-text');
+        const statusMessages = {
+          queued: 'Encolado',
+          uploading_blob: 'Subiendo fichero a Storage...',
+          ocr: 'Extrayendo texto (OCR)...',
+          detecting_language: 'Detectando idioma...',
+          translating: 'Traduciendo al español...',
+          analyzing_sentiment: 'Analizando sentimiento...',
+          key_phrases: 'Extrayendo frases clave...',
+          done: 'Finalizado'
+        };
+
+        if(!form || !overlay) return;
+
+        function setOverlay(msg){
+          overlay.classList.add('show');
+          if(loadingText) loadingText.textContent = msg;
+        }
+
+        function pollStatus(jobId){
+          fetch('/api/status/' + jobId).then(r=>r.json()).then(data=>{
+            const status = data.status;
+            if(status in statusMessages){
+              setOverlay(statusMessages[status]);
+            } else if(status){
+              setOverlay(status);
+            }
+
+            if(status === 'done'){
+              // navigate to result page
+              window.location.href = '/result/' + jobId;
+              return;
+            }
+
+            if(status === 'error'){
+              setOverlay('Error en el procesamiento: ' + (data.error||'consultar logs'));
+              if(btn) btn.disabled = false;
+              return;
+            }
+
+            setTimeout(function(){ pollStatus(jobId); }, 1000);
+          }).catch(err=>{
+            setOverlay('Error al consultar estado');
+            if(btn) btn.disabled = false;
+          });
+        }
+
+        form.addEventListener('submit', function(e){
+          e.preventDefault();
+          if(btn) btn.disabled = true;
+          setOverlay('Preparando subida...');
+
+          const fd = new FormData(form);
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/upload');
+
+          xhr.upload.onprogress = function(ev){
+            if(ev.lengthComputable){
+              const pct = Math.round(ev.loaded / ev.total * 100);
+              setOverlay('Subiendo fichero... ' + pct + '%');
+            } else {
+              setOverlay('Subiendo fichero...');
+            }
+          };
+
+          xhr.onload = function(){
+            if(xhr.status >= 200 && xhr.status < 300){
+              try{
+                const data = JSON.parse(xhr.responseText);
+                const jobId = data.job_id;
+                setOverlay('Fichero subido. Iniciando análisis...');
+                pollStatus(jobId);
+              }catch(err){
+                setOverlay('Respuesta inválida del servidor');
+                if(btn) btn.disabled = false;
+              }
+            } else {
+              setOverlay('Error en la subida: ' + xhr.status);
+              if(btn) btn.disabled = false;
+            }
+          };
+
+          xhr.onerror = function(){
+            setOverlay('Error de red durante la subida');
+            if(btn) btn.disabled = false;
+          };
+
+          xhr.send(fd);
+        });
+
+      })();
+    </script>
+  </body>
+</html>

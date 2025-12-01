@@ -1,0 +1,6 @@
+Flask>=2.0
+requests>=2.25
+azure-storage-blob>=12.8.1
+# The app uses REST calls for Computer Vision, Translator and Language Service
+dotenv
+gunicorn>=20.0.4
