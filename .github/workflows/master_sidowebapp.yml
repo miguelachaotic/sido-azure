@@ -62,9 +62,10 @@ jobs:
         with:
           app-name: 'SIDOWebApp'
           slot-name: 'Production'
-          package: ./build
+          package: ./frontend/dist
 
           
+
 
 
 
